@@ -1,7 +1,7 @@
-use crate::core::domain::tienda::value_object::identificadores::dueno_id::DuenoId;
+use crate::core::shared::domain::value_object::uuid::Uuid;
 
 pub struct Dueno {
-    id: DuenoId,
+    id: Uuid,
     full_name: String,
     telefono: String,
     email: String,
@@ -10,7 +10,7 @@ pub struct Dueno {
 
 impl Dueno {
     pub fn new(
-        id: DuenoId,
+        id: Uuid,
         full_name: String,
         email: String,
         telefono: String,
@@ -25,7 +25,7 @@ impl Dueno {
         }
     }
 
-    pub fn id(&self) -> DuenoId {
+    pub fn id(&self) -> Uuid {
         self.id.clone()
     }
 
