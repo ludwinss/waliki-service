@@ -1,19 +1,22 @@
-use crate::core::shared::domain::value_object::uuid::Uuid;
+use crate::core::{
+    domain::tienda::value_object::{cellphone::Cellphone, email::Email, fullname::Fullname},
+    shared::domain::value_object::uuid::Uuid,
+};
 
 pub struct Owner {
     id: Uuid,
-    full_name: String,
-    cellphone: String,
-    email: String,
+    full_name: Fullname,
+    cellphone: Cellphone,
+    email: Email,
     nick_name: Option<String>,
 }
 
 impl Owner {
     pub fn new(
         id: Uuid,
-        full_name: String,
-        email: String,
-        cellphone: String,
+        full_name: Fullname,
+        email: Email,
+        cellphone: Cellphone,
         nick_name: Option<String>,
     ) -> Self {
         Self {
@@ -29,19 +32,19 @@ impl Owner {
         self.id.clone()
     }
 
-    pub fn full_name(&self) -> String {
-        self.full_name.clone()
+    pub fn nick_name(&self) -> Option<String> {
+        self.nick_name.clone()
     }
 
-    pub fn email(&self) -> String {
+    pub fn email(&self) -> Email {
         self.email.clone()
     }
 
-    pub fn cellphone(&self) -> String {
+    pub fn cellphone(&self) -> Cellphone {
         self.cellphone.clone()
     }
 
-    pub fn nick_name(&self) -> Option<String> {
-        self.nick_name.clone()
+    pub fn full_name(&self) -> Fullname {
+        self.full_name.clone()
     }
 }
