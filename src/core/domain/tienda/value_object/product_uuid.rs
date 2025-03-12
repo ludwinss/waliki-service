@@ -1,9 +1,9 @@
 use crate::core::shared::domain::value_object::uuid::Uuid;
 
 #[derive(Clone)]
-pub struct DuenoUuid(Uuid);
+pub struct ProductUuid(Uuid);
 
-impl DuenoUuid {
+impl ProductUuid {
     pub fn new() -> Self {
         Self(Uuid::new())
     }

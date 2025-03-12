@@ -1,3 +1,4 @@
-pub mod producto_uuid;
-pub mod dueno_uuid;
-pub mod proveedor_uuid;
+pub mod product_uuid;
+pub mod owner_uuid;
+pub mod supplier_uuid;
+pub mod price;

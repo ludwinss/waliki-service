@@ -1,3 +1,3 @@
-pub mod dueno;
-pub mod proveedor;
-pub mod producto;
+pub mod owner;
+pub mod supplier;
+pub mod product;

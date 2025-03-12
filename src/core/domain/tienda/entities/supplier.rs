@@ -1,16 +1,16 @@
-use crate::core::domain::tienda::value_object::proveedor_uuid::ProveedorUuid;
+use crate::core::domain::tienda::value_object::supplier_uuid::SupplierUuid;
 
-pub struct Proveedor {
-    id: ProveedorUuid,
+pub struct Supplier {
+    id: SupplierUuid,
     full_name: String,
     telefono: String,
     email: String,
     chapa: Option<String>,
 }
 
-impl Proveedor {
+impl Supplier {
     pub fn new(
-        id: ProveedorUuid,
+        id: SupplierUuid,
         full_name: String,
         email: String,
         telefono: String,
@@ -25,7 +25,7 @@ impl Proveedor {
         }
     }
 
-    pub fn id(&self) -> ProveedorUuid {
+    pub fn id(&self) -> SupplierUuid {
         self.id.clone()
     }
 

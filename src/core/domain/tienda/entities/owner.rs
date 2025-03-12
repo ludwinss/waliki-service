@@ -1,27 +1,27 @@
 use crate::core::shared::domain::value_object::uuid::Uuid;
 
-pub struct Dueno {
+pub struct Owner {
     id: Uuid,
     full_name: String,
-    telefono: String,
+    cellphone: String,
     email: String,
-    chapa: Option<String>,
+    nick_name: Option<String>,
 }
 
-impl Dueno {
+impl Owner {
     pub fn new(
         id: Uuid,
         full_name: String,
         email: String,
-        telefono: String,
-        chapa: Option<String>,
+        cellphone: String,
+        nick_name: Option<String>,
     ) -> Self {
         Self {
             id,
             full_name,
             email,
-            telefono,
-            chapa,
+            cellphone,
+            nick_name,
         }
     }
 
@@ -33,15 +33,15 @@ impl Dueno {
         self.full_name.clone()
     }
 
-    pub fn telefono(&self) -> String {
-        self.telefono.clone()
-    }
-
-    pub fn chapa(&self) -> Option<String> {
-        self.chapa.clone()
-    }
-
     pub fn email(&self) -> String {
         self.email.clone()
+    }
+
+    pub fn cellphone(&self) -> String {
+        self.cellphone.clone()
+    }
+
+    pub fn nick_name(&self) -> Option<String> {
+        self.nick_name.clone()
     }
 }
