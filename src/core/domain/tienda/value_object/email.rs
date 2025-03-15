@@ -1,12 +1,60 @@
+use regex::Regex;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum EmailError {
+    #[error("Email inválido: {0}")]
+    InvalidFormat(String),
+    #[error("Email demasiado largo: Máximo {0} caracteres")]
+    InvalidLength(usize),
+    #[error("Email vacío")]
+    Empty,
+}
+
 #[derive(Clone)]
-pub struct Email (String);
+pub struct Email {
+    value: String,
+}
 
 impl Email {
-    pub fn new(value: String) -> Self {
-        Self(value)
+    const EMAIL_PATTERN: &str = r"/[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?/g";
+
+    const MAX_LENGTH: usize = 255;
+
+    pub fn new(value: String) -> Result<(), EmailError> {
+        let value = value.to_lowercase().trim().to_string();
+        Self::ensure_is_not_empty(&value)?;
+        Self::ensure_length_is_valid(&value)?;
+        Self::ensure_format_is_valid(&value)?;
+
+        Ok(())
     }
 
     pub fn value(&self) -> String {
-        self.0.clone()
+        self.value.clone()
+    }
+
+    fn ensure_is_not_empty(value: &str) -> Result<(), EmailError> {
+        if value.is_empty() {
+            return Err(EmailError::Empty);
+        }
+        Ok(())
+    }
+
+    fn ensure_format_is_valid(value: &str) -> Result<(), EmailError> {
+        let reg_exp_email = Regex::new(Self::EMAIL_PATTERN).unwrap();
+
+        if !reg_exp_email.is_match(&value) {
+            return Err(EmailError::InvalidFormat(value.to_string()));
+        }
+
+        Ok(())
+    }
+
+    fn ensure_length_is_valid(value: &str) -> Result<(), EmailError> {
+        if value.len() >= Self::MAX_LENGTH {
+            return Err(EmailError::InvalidLength(Self::MAX_LENGTH));
+        }
+        Ok(())
     }
 }
