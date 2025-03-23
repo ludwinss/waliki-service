@@ -35,6 +35,14 @@ impl PurchaseOrderLine {
         self.quantity
     }
 
+    pub fn get_price(&self) -> f32 {
+        self.price
+    }
+
+    pub fn get_product(&self) -> &ProductUuid {
+        &self.product
+    }
+
     fn ensure_price_is_positive(price: &f32) -> Result<(), PurchaseOrderLineError> {
         if *price < 0.0 {
             return Err(PurchaseOrderLineError::InvalidPrice);

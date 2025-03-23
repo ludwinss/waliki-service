@@ -23,7 +23,7 @@ impl DomainEventBase {
             aggregate_id,
             event_name,
             event_id: event_id.unwrap_or_else(|| Uuid::new_v4().to_string()),
-            occurred_on: occurred_on.unwrap_or_else(|| Utc::now()),
+            occurred_on: occurred_on.unwrap_or_else(Utc::now),
         }
     }
 }

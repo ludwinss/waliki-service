@@ -33,7 +33,7 @@ impl Cellphone {
             return Err(CellphoneError::InvalidFormat);
         }
 
-        let country_founded = match country_repo.find_by_phone_prefix(&raw_phone) {
+        let country_founded = match country_repo.find_by_phone_prefix(raw_phone) {
             Some(country) => country,
             None => return Err(CellphoneError::CountryCodeNotSupported),
         };

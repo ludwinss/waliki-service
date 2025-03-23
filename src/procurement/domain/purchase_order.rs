@@ -5,14 +5,11 @@ use crate::procurement::value_object::{
     supplier_uuid::SupplierUuid,
 };
 
-enum PurchaseOrderStatus {
+pub enum PurchaseOrderStatus {
     Pending,
-    Approved,
-    Rejected,
-    Cancelled,
 }
 
-struct PurchaseOrder {
+pub struct PurchaseOrder {
     id: PurchaseOrderUuid,
     id_supplier: SupplierUuid,
     lines: Vec<PurchaseOrderLine>,
@@ -43,5 +40,20 @@ impl PurchaseOrder {
 
     pub fn total_quantity(&self) -> u32 {
         self.lines.iter().map(|line| line.get_quantity()).sum()
+    }
+
+    pub fn get_id(&self) -> &PurchaseOrderUuid {
+        &self.id
+    }
+
+    pub fn get_id_supplier(&self) -> &SupplierUuid {
+        &self.id_supplier
+    }
+    pub fn get_date_order(&self) -> &DateTime<Utc> {
+        &self.date_order
+    }
+
+    pub fn get_status(&self) -> &PurchaseOrderStatus {
+        &self.status
     }
 }

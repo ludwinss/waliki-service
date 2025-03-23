@@ -21,13 +21,13 @@ impl Email {
 
     const MAX_LENGTH: usize = 255;
 
-    pub fn new(value: String) -> Result<(), EmailError> {
+    pub fn new(value: String) -> Result<Self, EmailError> {
         let value = value.to_lowercase().trim().to_string();
         Self::ensure_is_not_empty(&value)?;
         Self::ensure_length_is_valid(&value)?;
         Self::ensure_format_is_valid(&value)?;
 
-        Ok(())
+        Ok(Self { value })
     }
 
     pub fn value(&self) -> String {
@@ -44,7 +44,7 @@ impl Email {
     fn ensure_format_is_valid(value: &str) -> Result<(), EmailError> {
         let reg_exp_email = Regex::new(Self::EMAIL_PATTERN).unwrap();
 
-        if !reg_exp_email.is_match(&value) {
+        if !reg_exp_email.is_match(value) {
             return Err(EmailError::InvalidFormat(value.to_string()));
         }
 

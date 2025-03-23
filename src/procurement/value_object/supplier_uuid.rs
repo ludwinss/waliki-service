@@ -9,4 +9,14 @@ impl SupplierUuid {
     pub fn new() -> Self {
         Self { value: Uuid::new() }
     }
+
+    pub fn value(&self) -> Uuid {
+        self.value.clone()
+    }
+}
+
+impl Default for SupplierUuid {
+    fn default() -> Self {
+        Self::new()
+    }
 }

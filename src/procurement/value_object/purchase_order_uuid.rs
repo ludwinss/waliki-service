@@ -8,4 +8,14 @@ impl PurchaseOrderUuid {
     pub fn new() -> Self {
         Self { value: Uuid::new() }
     }
+
+    pub fn value(&self) -> Uuid {
+        self.value.clone()
+    }
+}
+
+impl Default for PurchaseOrderUuid {
+    fn default() -> Self {
+        Self::new()
+    }
 }
