@@ -49,6 +49,7 @@ impl PurchaseOrder {
     pub fn get_id_supplier(&self) -> &SupplierUuid {
         &self.id_supplier
     }
+
     pub fn get_date_order(&self) -> &DateTime<Utc> {
         &self.date_order
     }
