@@ -1,0 +1,17 @@
+#!/bin/sh
+# .husky/pre-commit
+
+cargo fmt -- --check
+if [ $? -ne 0 ]; then
+    echo "❌ Code is not properly formatted. Run 'cargo fmt' to fix."
+    exit 1
+fi
+
+cargo clippy -- -D warnings
+if [ $? -ne 0 ]; then
+    echo "❌ Clippy found issues. Fix them before committing."
+    exit 1
+fi
+
+echo "✅ Code is properly formatted and clippy passed."
+exit 0
