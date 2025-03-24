@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 
-use crate::procurement::value_object::{
+use crate::procurement::domain::value_object::{
     purchase_order_line::PurchaseOrderLine, purchase_order_uuid::PurchaseOrderUuid,
     supplier_uuid::SupplierUuid,
 };

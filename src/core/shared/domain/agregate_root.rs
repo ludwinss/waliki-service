@@ -13,4 +13,3 @@ pub trait AggregateRoot {
         std::mem::take(self.domain_events_mut())
     }
 }
-

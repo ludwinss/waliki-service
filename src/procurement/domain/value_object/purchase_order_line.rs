@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::procurement::value_object::product_uuid::ProductUuid;
+use super::product_uuid::ProductUuid;
 
 #[derive(Error, Debug)]
 pub enum PurchaseOrderLineError {

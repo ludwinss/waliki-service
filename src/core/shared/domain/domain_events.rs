@@ -32,4 +32,3 @@ pub trait DomainEvent {
     fn base(&self) -> &DomainEventBase;
     fn to_primitives(&self) -> DomainEventAttributes;
 }
-
