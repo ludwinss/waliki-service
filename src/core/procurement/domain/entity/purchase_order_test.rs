@@ -1,6 +1,6 @@
 use chrono::Utc;
 
-use crate::procurement::domain::{
+use crate::core::procurement::domain::{
     entity::purchase_order::PurchaseOrder,
     value_object::{
         product_uuid::ProductUuid, purchase_order_line::PurchaseOrderLine,
