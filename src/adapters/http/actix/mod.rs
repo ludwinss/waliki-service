@@ -1,4 +1,5 @@
 pub mod controllers;
+pub mod dto;
 pub mod routes;
 pub mod state;
 
@@ -26,6 +27,7 @@ pub async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
+            .wrap(Logger::new("%a \"%r\" %s %b %T"))
             .app_data(state.clone())
             .wrap(
                 SessionMiddleware::builder(CookieSessionStore::default(), secret_key.clone())

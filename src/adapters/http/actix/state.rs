@@ -1,41 +1,26 @@
-use openidconnect::core::{CoreClient, CoreProviderMetadata};
-use openidconnect::reqwest::async_http_client;
-use openidconnect::{ClientId, ClientSecret, IssuerUrl, RedirectUrl};
+use std::sync::Arc;
 
+use crate::context::user::domain::services::oidc_flow::OidcFlow;
+use crate::context::user::infraestructure::auth::google_oidc_flow::GoogleOidcFlow;
 use crate::platform::config::api::ApiConfig;
 
-#[derive(Clone, Debug)]
 pub struct AppState {
-    #[allow(dead_code)]
-    pub oidc: CoreClient,
-    #[allow(dead_code)]
-    pub client_id: String,
+    pub oidc_flow: Arc<dyn OidcFlow>,
 }
 
 impl AppState {
     pub async fn from_cfg(cfg: &ApiConfig) -> Self {
-        let issuer =
-            IssuerUrl::new(cfg.common.oidc_google_issuer_uri.clone()).expect("invalid issuer url");
-
-        let metadata = CoreProviderMetadata::discover_async(issuer, async_http_client)
-            .await
-            .expect("OIDC discovery failed");
-
-        let client = CoreClient::from_provider_metadata(
-            metadata,
-            ClientId::new(cfg.common.oidc_google_client_id.clone()),
-            Some(ClientSecret::new(
-                cfg.common.oidc_google_client_secret.clone(),
-            )),
+        let flow = GoogleOidcFlow::discover(
+            &cfg.common.oidc_google_issuer_uri,
+            cfg.common.oidc_google_client_id.clone(),
+            Some(cfg.common.oidc_google_client_secret.clone()),
+            cfg.common.oidc_google_redirect_uri.clone(),
         )
-        .set_redirect_uri(
-            RedirectUrl::new(cfg.common.oidc_google_redirect_uri.clone())
-                .expect("invalid redirect URI"),
-        );
+        .await
+        .expect("OIDC discovery failed");
 
         Self {
-            oidc: client,
-            client_id: cfg.common.oidc_google_client_id.clone(),
+            oidc_flow: Arc::new(flow),
         }
     }
 }
