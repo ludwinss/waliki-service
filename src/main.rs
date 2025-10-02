@@ -1,6 +1,7 @@
-pub mod core;
+mod adapters;
+mod context;
+mod platform;
 
-fn main() {
-    println!("Hello, world!");
-    println!("Hello, world2!");
+fn main() -> std::io::Result<()> {
+    adapters::http::actix::main()
 }

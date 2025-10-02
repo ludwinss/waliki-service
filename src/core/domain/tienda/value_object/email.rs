@@ -1,16 +1,6 @@
 use regex::Regex;
 use thiserror::Error;
 
-#[derive(Error, Debug)]
-pub enum EmailError {
-    #[error("Email inválido: {0}")]
-    InvalidFormat(String),
-    #[error("Email demasiado largo: Máximo {0} caracteres")]
-    InvalidLength(usize),
-    #[error("Email vacío")]
-    Empty,
-}
-
 #[derive(Clone)]
 pub struct Email {
     value: String,
