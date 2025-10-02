@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use crate::context::user::app::commands::login_with_google::LoginWithGoogleHandler;
 use crate::context::user::app::services::oidc_flow::OidcFlow;
-use crate::context::user::infraestructure::auth::google_oidc_flow::GoogleOidcFlow;
-use crate::context::user::infraestructure::postgres::pool::init_pool;
-use crate::context::user::infraestructure::postgres::users::repository::PgUserRepository;
+use crate::context::user::infrastructure::auth::google_oidc_flow::GoogleOidcFlow;
+use crate::context::user::infrastructure::postgres::pool::init_pool;
+use crate::context::user::infrastructure::postgres::users::repository::PgUserRepository;
 use crate::platform::config::api::ApiConfig;
 
 #[derive(Clone)]
