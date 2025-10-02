@@ -15,10 +15,14 @@ impl Uuid {
     pub fn new() -> Self {
         Self(UuidCrate::new_v4())
     }
+
+    fn hyphenated(&self) -> String {
+        self.0.hyphenated().to_string()
+    }
 }
 
 impl fmt::Display for Uuid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "{}", self.hyphenated())
     }
 }

@@ -1,4 +1,3 @@
-pub mod cellphone;
 pub mod email;
 pub mod external_provider;
 pub mod external_subject;

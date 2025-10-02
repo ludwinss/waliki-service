@@ -1,4 +1,4 @@
-use crate::context::user::domain::errors::IdentityError;
+use anyhow::Result;
 
 pub struct OidcClaims {
     pub sub: String,
@@ -14,13 +14,12 @@ pub struct AuthStart {
     pub pkce_verifier: String,
 }
 
-#[async_trait::async_trait]
 pub trait OidcFlow: Send + Sync {
     fn start_auth(&self) -> AuthStart;
-    async fn exchange_and_verify(
+    fn exchange_and_verify(
         &self,
         code: &str,
         expected_nonce: &str,
         pkce_verifier: &str,
-    ) -> Result<OidcClaims, IdentityError>;
+    ) -> Result<OidcClaims>;
 }

@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub struct CommonConfig {
     pub app_env: String,
 
@@ -7,6 +8,8 @@ pub struct CommonConfig {
     pub oidc_google_issuer_uri: String,
 
     pub secret_key: String,
+
+    pub postgres_uri: String,
 }
 
 impl CommonConfig {
@@ -22,6 +25,8 @@ impl CommonConfig {
             oidc_google_issuer_uri: get_required("OIDC_GOOGLE_ISSUER_URI"),
 
             secret_key: get_required("SECRET_KEY"),
+
+            postgres_uri: get_required("POSTGRES_URI"),
         }
     }
 

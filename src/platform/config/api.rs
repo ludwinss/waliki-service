@@ -3,6 +3,7 @@ use crate::platform::config::{
     helpers::{get_default, load_env_layers},
 };
 
+#[derive(Clone)]
 pub struct ApiConfig {
     pub common: CommonConfig,
     pub host: String,

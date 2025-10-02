@@ -1,2 +1,2 @@
-// mod shared;
+pub mod shared;
 pub mod user;

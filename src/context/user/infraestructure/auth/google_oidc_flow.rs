@@ -1,14 +1,17 @@
+use anyhow::{Context, Result, bail};
 use openidconnect::{
     AuthorizationCode, ClientId, ClientSecret, CsrfToken, IssuerUrl, Nonce, PkceCodeChallenge,
     PkceCodeVerifier, RedirectUrl, Scope,
     core::{CoreAuthenticationFlow, CoreClient, CoreProviderMetadata},
 };
 
-use crate::context::user::domain::{
-    errors::IdentityError,
-    services::oidc_flow::{AuthStart, OidcClaims, OidcFlow},
-};
-use openidconnect::reqwest::{Client as OidcHttpClient, redirect::Policy};
+use crate::context::user::app::services::oidc_flow::{AuthStart, OidcClaims, OidcFlow};
+use crate::platform::utils::hidden_sensible_data::last4;
+
+use openidconnect::reqwest::blocking::{Client as OidcHttpClient, ClientBuilder};
+use openidconnect::reqwest::redirect::Policy;
+
+use tracing::{debug, error, info, warn};
 
 pub struct GoogleOidcFlow {
     provider: CoreProviderMetadata,
@@ -19,26 +22,34 @@ pub struct GoogleOidcFlow {
 }
 
 impl GoogleOidcFlow {
-    pub async fn discover(
+    pub fn discover(
         issuer: &str,
         client_id: String,
         client_secret: Option<String>,
         redirect_uri: String,
-    ) -> Result<Self, IdentityError> {
-        let http = OidcHttpClient::builder()
+    ) -> Result<Self> {
+        info!(target: "oidc", issuer, redirect_uri, "OIDC discover");
+
+        debug!(target: "oidc", "Building blocking HTTP client (redirect=none)...");
+        let http = ClientBuilder::new()
             .redirect(Policy::none())
             .build()
-            .map_err(|e| IdentityError::OidcOther(format!("http client build: {e}")))?;
+            .context("http client build")?;
 
-        let issuer = IssuerUrl::new(issuer.to_string())
-            .map_err(|_| IdentityError::InvalidIssuerOrAudience)?;
+        let issuer = IssuerUrl::new(issuer.to_string()).context("bad issuer")?;
 
-        let provider = CoreProviderMetadata::discover_async(issuer, &http)
-            .await
-            .map_err(|_| IdentityError::OidcNetwork)?;
+        debug!(target: "oidc", "Fetching provider metadata…");
+        let provider = CoreProviderMetadata::discover(&issuer, &http).context("discover")?;
 
-        let redirect_uri = RedirectUrl::new(redirect_uri)
-            .map_err(|_| IdentityError::OidcOther("bad redirect".into()))?;
+        info!(
+            target: "oidc",
+            auth_endpoint = %provider.authorization_endpoint(),
+            token_endpoint = %provider.token_endpoint().map(|u| u.as_str()).unwrap_or("<none>"),
+            "OIDC provider ok"
+        );
+
+        let redirect_uri = RedirectUrl::new(redirect_uri).context("bad redirect")?;
+        debug!(target: "oidc", redirect = %redirect_uri, "Redirect URL parse ok");
 
         Ok(Self {
             provider,
@@ -50,9 +61,10 @@ impl GoogleOidcFlow {
     }
 }
 
-#[async_trait::async_trait]
 impl OidcFlow for GoogleOidcFlow {
     fn start_auth(&self) -> AuthStart {
+        info!(target: "oidc", "Starting OIDC authorization…");
+
         let client = CoreClient::from_provider_metadata(
             self.provider.clone(),
             ClientId::new(self.client_id.clone()),
@@ -61,6 +73,7 @@ impl OidcFlow for GoogleOidcFlow {
         .set_redirect_uri(self.redirect_uri.clone());
 
         let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
+
         let (auth_url, csrf, nonce) = client
             .authorize_url(
                 CoreAuthenticationFlow::AuthorizationCode,
@@ -73,6 +86,15 @@ impl OidcFlow for GoogleOidcFlow {
             .set_pkce_challenge(pkce_challenge)
             .url();
 
+        debug!(
+            target: "oidc",
+            csrf = %format!("***{}", last4(csrf.secret())),
+            nonce = %format!("***{}", last4(nonce.secret())),
+            pkce  = %format!("***{}", last4(pkce_verifier.secret())),
+            redirect = %self.redirect_uri,
+            "Auth URL generated"
+        );
+
         AuthStart {
             auth_url: auth_url.to_string(),
             csrf: csrf.secret().to_string(),
@@ -81,12 +103,21 @@ impl OidcFlow for GoogleOidcFlow {
         }
     }
 
-    async fn exchange_and_verify(
+    fn exchange_and_verify(
         &self,
         code: &str,
         expected_nonce: &str,
         pkce_verifier: &str,
-    ) -> Result<OidcClaims, IdentityError> {
+    ) -> Result<OidcClaims> {
+        info!(target: "oidc", "Exchanging authorization code for tokens…");
+        debug!(
+            target: "oidc",
+            code = %format!("***{}", last4(code)),
+            nonce = %format!("***{}", last4(expected_nonce)),
+            pkce  = %format!("***{}", last4(pkce_verifier)),
+            "Inputs"
+        );
+
         let client = CoreClient::from_provider_metadata(
             self.provider.clone(),
             ClientId::new(self.client_id.clone()),
@@ -94,44 +125,69 @@ impl OidcFlow for GoogleOidcFlow {
         )
         .set_redirect_uri(self.redirect_uri.clone());
 
-        let code_req = client
-            .exchange_code(AuthorizationCode::new(code.to_string()))
-            .map_err(|_| IdentityError::OidcNetwork)?;
-
-        let token_resp = code_req
+        let token_resp = client
+            .exchange_code(AuthorizationCode::new(code.to_string()))?
             .set_pkce_verifier(PkceCodeVerifier::new(pkce_verifier.to_string()))
-            .request_async(&self.http)
-            .await
-            .map_err(|_| IdentityError::OidcNetwork)?;
+            .request(&self.http)
+            .map_err(|e| {
+                error!(target: "oidc", error = ?e, "Token request failed");
+                e
+            })
+            .context("request token")?;
 
         let id_token = token_resp
             .extra_fields()
             .id_token()
             .cloned()
-            .ok_or(IdentityError::InvalidIdToken)?;
+            .ok_or_else(|| {
+                warn!(target: "oidc", "No ID token in token response");
+                anyhow::anyhow!("get id token")
+            })?;
 
+        info!(target: "oidc", "Verifying ID token claims…");
         let nonce = Nonce::new(expected_nonce.to_string());
         let claims = id_token
             .claims(&client.id_token_verifier(), &nonce)
-            .map_err(|e| IdentityError::OidcOther(e.to_string()))?;
+            .map_err(|e| {
+                error!(target: "oidc", error = ?e, "ID token claims verification failed");
+                e
+            })
+            .context("claims")?;
 
         if !claims
             .audiences()
             .iter()
             .any(|a| a.as_str() == self.client_id)
         {
-            return Err(IdentityError::InvalidIssuerOrAudience);
+            let got: Vec<_> = claims.audiences().iter().map(|a| a.as_str()).collect();
+            warn!(
+                target: "oidc",
+                expected = %self.client_id,
+                got = ?got,
+                "Audience mismatch"
+            );
+            bail!("audience not found");
         }
 
-        let nonce_ok = claims.nonce().map(|n| n.secret()) == Some(nonce.secret());
-        if !nonce_ok {
-            return Err(IdentityError::InvalidTimestamps);
+        if claims.nonce().map(|n| n.secret()) != Some(nonce.secret()) {
+            warn!(target: "oidc", "Nonce mismatch");
+            bail!("nonce not ok");
         }
 
         let email = claims
             .email()
             .map(|e| e.as_str().to_string())
-            .ok_or(IdentityError::OidcNotFoundEmail)?;
+            .ok_or_else(|| {
+                warn!(target: "oidc", "Email claim missing");
+                anyhow::anyhow!("email")
+            })?;
+
+        info!(
+            target: "oidc",
+            sub_suffix = %last4(claims.subject().as_str()),
+            email = %email,
+            "OIDC login verified"
+        );
 
         Ok(OidcClaims {
             sub: claims.subject().as_str().to_string(),

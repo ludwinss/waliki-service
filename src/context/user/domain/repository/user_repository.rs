@@ -1,5 +1,8 @@
-use crate::context::user::domain::{entities::user::User, errors::IdentityError};
+use crate::context::user::domain::{entities::user::User, value_objects::email::Email};
 
-trait UserRepository {
-    fn save(&mut self, user: &User) -> Result<(), IdentityError>;
+use anyhow::Result;
+pub trait UserRepository: Send + Sync {
+    // TODO: chambiar anyhow por una manejador de erroes en el dominio
+    fn find_by_email(&self, email: &Email) -> Result<Option<User>>;
+    fn save(&self, user: &User) -> Result<()>;
 }
