@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use anyhow::Result;
 
-use crate::context::{
-    shared::domain::value_objects::uuid::Uuid,
-    user::{
-        app::dtos::login_with_google::{LoginWithGoogle, LoginWithGoogleResult},
-        domain::{
+use crate::{
+    adapters::http::actix::dto::login_with_google::{LoginWithGoogle, LoginWithGoogleResult},
+    context::{
+        shared::domain::value_objects::uuid::Uuid,
+        user::domain::{
             entities::user as Entities,
             repository::user_repository::UserRepository,
             value_objects::{

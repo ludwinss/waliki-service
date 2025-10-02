@@ -8,8 +8,10 @@ use actix_web::{
 use tracing::{debug, error, info};
 
 use crate::{
-    adapters::http::actix::{dto::auth::GoogleCallbackQuery, state::AppState},
-    context::user::app::dtos::login_with_google::LoginWithGoogle,
+    adapters::http::actix::{
+        dto::{auth::GoogleCallbackQuery, login_with_google::LoginWithGoogle},
+        state::AppState,
+    },
     platform::utils::hidden_sensible_data::last4,
 };
 
