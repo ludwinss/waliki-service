@@ -1,7 +1,7 @@
-pub mod controllers;
-pub mod dto;
+pub mod error_mapper;
 pub mod routes;
 pub mod state;
+pub mod user;
 
 use actix_session::{SessionMiddleware, storage::CookieSessionStore};
 use actix_web::cookie::{Key, SameSite};
@@ -27,10 +27,19 @@ pub async fn main() -> std::io::Result<()> {
             .await
             .map_err(|e| {
                 eprintln!("spawn_blocking(AppState::from_cfg) panicked: {e}");
-                std::io::Error::new(std::io::ErrorKind::Other, "OIDC init task panicked")
+                std::io::Error::new(std::io::ErrorKind::Other, "app state init task panicked")
+            })?
+            .map_err(|e| {
+                eprintln!("failed to initialize app state: {e:?}");
+                std::io::Error::new(std::io::ErrorKind::Other, "failed to initialize app state")
             })?
     };
-    let state = web::Data::new(state);
+    let AppState {
+        login_with_google,
+        oidc_flow,
+    } = state;
+    let login_with_google = web::Data::new(login_with_google);
+    let oidc_flow = web::Data::new(oidc_flow);
 
     let secret_bytes = parse_secret_key(&cfg.common.secret_key);
     let secret_key = Key::from(&secret_bytes);
@@ -40,14 +49,15 @@ pub async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(Logger::default())
             .wrap(Logger::new("%a \"%r\" %s %b %T"))
-            .app_data(state.clone())
+            .app_data(login_with_google.clone())
+            .app_data(oidc_flow.clone())
             .wrap(
                 SessionMiddleware::builder(CookieSessionStore::default(), secret_key.clone())
                     .cookie_secure(cfg.cookie_secure)
                     .cookie_same_site(SameSite::Lax)
                     .build(),
             )
-            .configure(actix::routes::config)
+            .configure(actix::routes::configure)
     })
     .workers(1)
     .bind(&cfg.host)?
