@@ -1,13 +1,7 @@
 use actix_web::web;
 
-use crate::adapters::http::actix::controllers::user;
+use crate::adapters::http::actix::user::controllers::auth_controller::google_callback;
 
-pub fn config(cfg: &mut web::ServiceConfig) {
-    cfg.service(
-        web::scope("/api").service(
-            web::scope("/auth")
-                .route("/google", web::get().to(user::auth_google))
-                .route("/callback", web::get().to(user::auth_callback)),
-        ),
-    );
+pub fn configure(cfg: &mut web::ServiceConfig) {
+    cfg.service(google_callback);
 }

@@ -1,3 +1,3 @@
-mod mapper;
-mod models;
+pub mod mapper;
+pub mod models;
 pub mod repository;

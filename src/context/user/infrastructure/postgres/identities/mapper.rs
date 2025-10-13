@@ -1,29 +1,28 @@
-use crate::context::user::{
-    domain::value_objects::{
-        external_provider::ExternalProvider, external_subject::ExternalSubject,
-        identity_link::IdentityLink,
-    },
-    infrastructure::postgres::identities::models::NewIdentityRow,
+use chrono::{DateTime, Utc};
+use uuid::Uuid;
+
+use crate::context::user::domain::value_objects::{
+    external_provider::ExternalProvider, external_subject::ExternalSubject,
 };
 
-use super::models::IdentityRow;
+use super::models::{NewUserIdentity, UpdateUserIdentity};
 
-impl TryFrom<IdentityRow> for IdentityLink {
-    type Error = anyhow::Error;
-
-    fn try_from(value: IdentityRow) -> Result<Self, Self::Error> {
-        let new_provider = ExternalProvider::parse(value.provider)?;
-        let new_subject = ExternalSubject::parse(value.subject)?;
-
-        Ok(IdentityLink::new(new_provider, new_subject))
+pub fn to_new_identity(
+    user_id: i64,
+    provider: ExternalProvider,
+    subject: &ExternalSubject,
+) -> NewUserIdentity {
+    NewUserIdentity {
+        uuid: Uuid::new_v4(),
+        subject: subject.as_str().to_string(),
+        provider: provider.as_str().to_string(),
+        user_id,
     }
 }
 
-impl<'a> From<&'a IdentityLink> for NewIdentityRow<'a> {
-    fn from(value: &'a IdentityLink) -> Self {
-        NewIdentityRow {
-            subject: value.subject().as_str(),
-            provider: value.provider().as_str(),
-        }
+pub fn to_update_identity(subject: &ExternalSubject, now: DateTime<Utc>) -> UpdateUserIdentity {
+    UpdateUserIdentity {
+        subject: subject.as_str().to_string(),
+        updated_at: now,
     }
 }

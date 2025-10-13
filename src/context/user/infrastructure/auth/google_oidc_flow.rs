@@ -1,202 +1,157 @@
-use anyhow::{Context, Result, bail};
+use std::ops::Deref;
+
+use openidconnect::core::{CoreClient, CoreProviderMetadata, CoreResponseType};
+use openidconnect::reqwest;
 use openidconnect::{
-    AuthorizationCode, ClientId, ClientSecret, CsrfToken, IssuerUrl, Nonce, PkceCodeChallenge,
-    PkceCodeVerifier, RedirectUrl, Scope,
-    core::{CoreAuthenticationFlow, CoreClient, CoreProviderMetadata},
+    AccessTokenHash, AuthenticationFlow, AuthorizationCode, ClientId, ClientSecret, CsrfToken,
+    IssuerUrl, Nonce, OAuth2TokenResponse, PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, Scope,
+    TokenResponse,
 };
 
-use crate::context::user::app::services::oidc_flow::{AuthStart, OidcClaims, OidcFlow};
-use crate::platform::utils::hidden_sensible_data::last4;
+use crate::context::user::application::ports::oidc_flow::{
+    OidcAuthStart, OidcClaims, OidcError, OidcFlow,
+};
 
-use openidconnect::reqwest::blocking::{Client as OidcHttpClient, ClientBuilder};
-use openidconnect::reqwest::redirect::Policy;
+#[derive(Clone)]
+pub struct GoogleOidcConfig {
+    pub client_id: String,
+    pub client_secret: Option<String>,
+    pub redirect_uri: String,
+    pub issuer: String,
+}
 
-use tracing::{debug, error, info, warn};
-
+#[derive(Clone)]
 pub struct GoogleOidcFlow {
-    provider: CoreProviderMetadata,
-    client_id: String,
+    provider_metadata: CoreProviderMetadata,
+    client_id: ClientId,
     client_secret: Option<ClientSecret>,
     redirect_uri: RedirectUrl,
-    http: OidcHttpClient,
+    http_client: reqwest::blocking::Client,
 }
 
 impl GoogleOidcFlow {
-    pub fn discover(
-        issuer: &str,
-        client_id: String,
-        client_secret: Option<String>,
-        redirect_uri: String,
-    ) -> Result<Self> {
-        info!(target: "oidc", issuer, redirect_uri, "OIDC discover");
-
-        debug!(target: "oidc", "Building blocking HTTP client (redirect=none)...");
-        let http = ClientBuilder::new()
-            .redirect(Policy::none())
+    pub fn new(config: GoogleOidcConfig) -> Result<Self, OidcError> {
+        let http_client = reqwest::blocking::Client::builder()
+            .redirect(reqwest::redirect::Policy::none())
             .build()
-            .context("http client build")?;
+            .map_err(|e| OidcError::Discovery(format!("failed to build HTTP client: {e}")))?;
 
-        let issuer = IssuerUrl::new(issuer.to_string()).context("bad issuer")?;
+        let issuer = IssuerUrl::new(config.issuer.clone())
+            .map_err(|e| OidcError::Discovery(format!("invalid issuer url: {e}")))?;
 
-        debug!(target: "oidc", "Fetching provider metadata…");
-        let provider = CoreProviderMetadata::discover(&issuer, &http).context("discover")?;
+        let provider_metadata = CoreProviderMetadata::discover(&issuer, &http_client)
+            .map_err(|e| OidcError::Discovery(format!("failed to discover provider: {e}")))?;
 
-        info!(
-            target: "oidc",
-            auth_endpoint = %provider.authorization_endpoint(),
-            token_endpoint = %provider.token_endpoint().map(|u| u.as_str()).unwrap_or("<none>"),
-            "OIDC provider ok"
-        );
-
-        let redirect_uri = RedirectUrl::new(redirect_uri).context("bad redirect")?;
-        debug!(target: "oidc", redirect = %redirect_uri, "Redirect URL parse ok");
+        let client_id = ClientId::new(config.client_id);
+        let client_secret = config.client_secret.map(ClientSecret::new);
+        let redirect_uri = RedirectUrl::new(config.redirect_uri)
+            .map_err(|e| OidcError::Discovery(format!("invalid redirect uri: {e}")))?;
 
         Ok(Self {
-            provider,
-            client_id: client_id.clone(),
-            client_secret: client_secret.map(ClientSecret::new),
+            provider_metadata,
+            client_id,
+            client_secret,
             redirect_uri,
-            http,
+            http_client,
         })
     }
 }
 
 impl OidcFlow for GoogleOidcFlow {
-    fn start_auth(&self) -> AuthStart {
-        info!(target: "oidc", "Starting OIDC authorization…");
-
+    fn start(&self) -> Result<OidcAuthStart, OidcError> {
         let client = CoreClient::from_provider_metadata(
-            self.provider.clone(),
-            ClientId::new(self.client_id.clone()),
+            self.provider_metadata.clone(),
+            self.client_id.clone(),
             self.client_secret.clone(),
         )
         .set_redirect_uri(self.redirect_uri.clone());
 
-        let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
-
-        let (auth_url, csrf, nonce) = client
+        let (pkce_code_challenge, pkce_code_verifier) = PkceCodeChallenge::new_random_sha256();
+        let (authorize_url, csrf_token, nonce) = client
             .authorize_url(
-                CoreAuthenticationFlow::AuthorizationCode,
+                AuthenticationFlow::<CoreResponseType>::AuthorizationCode,
                 CsrfToken::new_random,
                 Nonce::new_random,
             )
-            .add_scope(Scope::new("openid".into()))
-            .add_scope(Scope::new("email".into()))
-            .add_scope(Scope::new("profile".into()))
-            .set_pkce_challenge(pkce_challenge)
+            .set_pkce_challenge(pkce_code_challenge)
+            .add_scope(Scope::new("openid".to_string()))
+            .add_scope(Scope::new("email".to_string()))
+            .add_scope(Scope::new("profile".to_string()))
             .url();
 
-        debug!(
-            target: "oidc",
-            csrf = %format!("***{}", last4(csrf.secret())),
-            nonce = %format!("***{}", last4(nonce.secret())),
-            pkce  = %format!("***{}", last4(pkce_verifier.secret())),
-            redirect = %self.redirect_uri,
-            "Auth URL generated"
-        );
-
-        AuthStart {
-            auth_url: auth_url.to_string(),
-            csrf: csrf.secret().to_string(),
+        Ok(OidcAuthStart {
+            authorization_url: authorize_url.to_string(),
+            csrf_token: csrf_token.secret().to_string(),
             nonce: nonce.secret().to_string(),
-            pkce_verifier: pkce_verifier.secret().to_string(),
-        }
+            pkce_verifier: pkce_code_verifier.secret().to_string(),
+        })
     }
 
-    fn exchange_and_verify(
+    fn exchange(
         &self,
         code: &str,
         expected_nonce: &str,
         pkce_verifier: &str,
-    ) -> Result<OidcClaims> {
-        info!(target: "oidc", "Exchanging authorization code for tokens…");
-        debug!(
-            target: "oidc",
-            code = %format!("***{}", last4(code)),
-            nonce = %format!("***{}", last4(expected_nonce)),
-            pkce  = %format!("***{}", last4(pkce_verifier)),
-            "Inputs"
-        );
-
+    ) -> Result<OidcClaims, OidcError> {
         let client = CoreClient::from_provider_metadata(
-            self.provider.clone(),
-            ClientId::new(self.client_id.clone()),
+            self.provider_metadata.clone(),
+            self.client_id.clone(),
             self.client_secret.clone(),
         )
         .set_redirect_uri(self.redirect_uri.clone());
 
-        let token_resp = client
-            .exchange_code(AuthorizationCode::new(code.to_string()))?
+        let token_request = client
+            .exchange_code(AuthorizationCode::new(code.to_string()))
+            .map_err(|e| OidcError::Flow(format!("failed to prepare token exchange: {e}")))?;
+        let token_response = token_request
             .set_pkce_verifier(PkceCodeVerifier::new(pkce_verifier.to_string()))
-            .request(&self.http)
-            .map_err(|e| {
-                error!(target: "oidc", error = ?e, "Token request failed");
-                e
-            })
-            .context("request token")?;
+            .request(&self.http_client)
+            .map_err(|e| OidcError::Flow(format!("failed to exchange authorization code: {e}")))?;
 
-        let id_token = token_resp
-            .extra_fields()
+        let id_token = token_response
             .id_token()
-            .cloned()
-            .ok_or_else(|| {
-                warn!(target: "oidc", "No ID token in token response");
-                anyhow::anyhow!("get id token")
-            })?;
-
-        info!(target: "oidc", "Verifying ID token claims…");
-        let nonce = Nonce::new(expected_nonce.to_string());
+            .ok_or_else(|| OidcError::Flow("provider did not return an id_token".to_string()))?;
+        let id_token_verifier = client.id_token_verifier();
         let claims = id_token
-            .claims(&client.id_token_verifier(), &nonce)
-            .map_err(|e| {
-                error!(target: "oidc", error = ?e, "ID token claims verification failed");
-                e
-            })
-            .context("claims")?;
+            .claims(&id_token_verifier, &Nonce::new(expected_nonce.to_string()))
+            .map_err(|e| OidcError::Flow(format!("invalid id_token claims: {e}")))?;
 
-        if !claims
-            .audiences()
-            .iter()
-            .any(|a| a.as_str() == self.client_id)
-        {
-            let got: Vec<_> = claims.audiences().iter().map(|a| a.as_str()).collect();
-            warn!(
-                target: "oidc",
-                expected = %self.client_id,
-                got = ?got,
-                "Audience mismatch"
-            );
-            bail!("audience not found");
-        }
+        if let Some(expected_hash) = claims.access_token_hash() {
+            let signing_alg = id_token.signing_alg().map_err(|e| {
+                OidcError::Flow(format!("failed to determine signing algorithm: {e}"))
+            })?;
+            let signing_key = id_token
+                .signing_key(&id_token_verifier)
+                .map_err(|e| OidcError::Flow(format!("failed to obtain signing key: {e}")))?;
+            let actual_hash = AccessTokenHash::from_token(
+                token_response.access_token(),
+                signing_alg,
+                signing_key,
+            )
+            .map_err(|e| OidcError::Flow(format!("failed to compute access token hash: {e}")))?;
 
-        if claims.nonce().map(|n| n.secret()) != Some(nonce.secret()) {
-            warn!(target: "oidc", "Nonce mismatch");
-            bail!("nonce not ok");
+            if actual_hash != *expected_hash {
+                return Err(OidcError::Flow(
+                    "access token hash mismatch; possible token substitution".to_string(),
+                ));
+            }
         }
 
         let email = claims
             .email()
-            .map(|e| e.as_str().to_string())
-            .ok_or_else(|| {
-                warn!(target: "oidc", "Email claim missing");
-                anyhow::anyhow!("email")
-            })?;
-
-        info!(
-            target: "oidc",
-            sub_suffix = %last4(claims.subject().as_str()),
-            email = %email,
-            "OIDC login verified"
-        );
+            .map(|email| email.deref().clone())
+            .ok_or_else(|| OidcError::Flow("email claim not provided".to_string()))?;
+        let email_verified = claims.email_verified().unwrap_or(false);
+        let name = claims
+            .name()
+            .and_then(|name| name.get(None))
+            .map(|name| name.deref().clone());
 
         Ok(OidcClaims {
-            sub: claims.subject().as_str().to_string(),
+            subject: claims.subject().as_str().to_string(),
             email,
-            email_verified: claims.email_verified().unwrap_or(false),
-            name: claims
-                .name()
-                .and_then(|n| n.get(None))
-                .map(|s| s.to_string()),
+            email_verified,
+            name,
         })
     }
 }

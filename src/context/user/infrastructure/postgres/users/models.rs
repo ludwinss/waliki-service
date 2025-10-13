@@ -1,20 +1,38 @@
+use chrono::{DateTime, Utc};
 use diesel::prelude::*;
+use uuid::Uuid;
 
-use crate::context::user::infrastructure::postgres::schema::user::users;
+use crate::context::user::infrastructure::postgres::schema::users;
 
-#[derive(Queryable, Selectable, Debug)]
+#[derive(Debug, Clone, Queryable, Identifiable)]
 #[diesel(table_name = users)]
-#[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct UserRow {
-    pub uuid: uuid::Uuid,
-    pub name: Option<String>,
+    pub id: i64,
+    pub uuid: Uuid,
     pub email: String,
+    pub name: Option<String>,
+    pub status: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub email_verified_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Insertable)]
+#[derive(Debug, Insertable)]
 #[diesel(table_name = users)]
-pub struct NewUserRow<'a> {
-    pub status: &'a str,
-    pub name: Option<&'a str>,
-    pub email: &'a str,
+pub struct NewUser {
+    pub uuid: Uuid,
+    pub email: String,
+    pub name: Option<String>,
+    pub status: String,
+    pub email_verified_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, AsChangeset)]
+#[diesel(table_name = users)]
+pub struct UpdateUser {
+    pub email: String,
+    pub name: Option<String>,
+    pub status: String,
+    pub email_verified_at: Option<DateTime<Utc>>,
+    pub updated_at: DateTime<Utc>,
 }
