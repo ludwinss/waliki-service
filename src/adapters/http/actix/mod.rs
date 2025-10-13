@@ -6,7 +6,6 @@ pub mod user;
 use actix_session::{SessionMiddleware, storage::CookieSessionStore};
 use actix_web::cookie::{Key, SameSite};
 use actix_web::middleware::Logger;
-use actix_web::rt::task::spawn_blocking;
 use actix_web::{App, HttpServer, web};
 
 use crate::adapters::http::actix;
@@ -21,18 +20,15 @@ pub async fn main() -> std::io::Result<()> {
 
     logger::init(LogOptions::default());
 
-    let state = {
-        let cfg_clone = cfg.clone();
-        spawn_blocking(move || AppState::from_cfg(&cfg_clone))
-            .await
-            .map_err(|e| {
-                eprintln!("spawn_blocking(AppState::from_cfg) panicked: {e}");
-                std::io::Error::new(std::io::ErrorKind::Other, "app state init task panicked")
-            })?
-            .map_err(|e| {
-                eprintln!("failed to initialize app state: {e:?}");
-                std::io::Error::new(std::io::ErrorKind::Other, "failed to initialize app state")
-            })?
+    let state = match AppState::from_cfg(&cfg).await {
+        Ok(state) => state,
+        Err(e) => {
+            eprintln!("failed to initialize app state: {e:?}");
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "failed to initialize app state",
+            ));
+        }
     };
     let AppState {
         login_with_google,

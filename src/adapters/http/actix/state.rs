@@ -25,7 +25,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn from_cfg(cfg: &ApiConfig) -> anyhow::Result<Self> {
+    pub async fn from_cfg(cfg: &ApiConfig) -> anyhow::Result<Self> {
         let pool: PgPool = init_pool(cfg.common.postgres_uri.as_str())
             .with_context(|| "failed to initialize PostgreSQL pool")?;
         let repo = Arc::new(PgUserRepository::new(pool));
@@ -41,7 +41,9 @@ impl AppState {
             redirect_uri: cfg.common.oidc_google_redirect_uri.clone(),
             issuer: cfg.common.oidc_google_issuer_uri.clone(),
         };
-        let oidc_flow = GoogleOidcFlow::new(oidc_config).map_err(anyhow::Error::from)?;
+        let oidc_flow = GoogleOidcFlow::new(oidc_config)
+            .await
+            .map_err(anyhow::Error::from)?;
         let oidc_flow: Arc<dyn OidcFlow> = Arc::new(oidc_flow);
 
         Ok(Self {

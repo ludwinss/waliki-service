@@ -71,7 +71,7 @@ impl UserRepository for PgUserRepository {
             let now = Utc::now();
             let fullname = user.fullname().map(|name| name.as_str().to_string());
             let email_str = user.email().as_str().to_string();
-            let verified_at = user.email_verified_at().cloned();
+            let verified_at = user.email_verified_at().copied();
             let status = STATUS_ACTIVE.to_string();
 
             let new_user = NewUser {

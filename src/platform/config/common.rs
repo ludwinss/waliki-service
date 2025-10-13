@@ -22,7 +22,7 @@ impl CommonConfig {
             oidc_google_issuer_uri: get_required("OIDC_GOOGLE_ISSUER_URI"),
             secret_key: get_required("SECRET_KEY"),
 
-            postgres_uri: get_required("POSTGRES_URI"),
+            postgres_uri: get_required("DATABASE_URL"),
         }
     }
 

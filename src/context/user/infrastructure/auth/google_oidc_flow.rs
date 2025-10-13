@@ -1,7 +1,6 @@
 use std::ops::Deref;
 
 use openidconnect::core::{CoreClient, CoreProviderMetadata, CoreResponseType};
-use openidconnect::reqwest;
 use openidconnect::{
     AccessTokenHash, AuthenticationFlow, AuthorizationCode, ClientId, ClientSecret, CsrfToken,
     IssuerUrl, Nonce, OAuth2TokenResponse, PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, Scope,
@@ -26,12 +25,12 @@ pub struct GoogleOidcFlow {
     client_id: ClientId,
     client_secret: Option<ClientSecret>,
     redirect_uri: RedirectUrl,
-    http_client: reqwest::blocking::Client,
+    http_client: reqwest::Client,
 }
 
 impl GoogleOidcFlow {
-    pub fn new(config: GoogleOidcConfig) -> Result<Self, OidcError> {
-        let http_client = reqwest::blocking::Client::builder()
+    pub async fn new(config: GoogleOidcConfig) -> Result<Self, OidcError> {
+        let http_client = reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
             .build()
             .map_err(|e| OidcError::Discovery(format!("failed to build HTTP client: {e}")))?;
@@ -39,7 +38,8 @@ impl GoogleOidcFlow {
         let issuer = IssuerUrl::new(config.issuer.clone())
             .map_err(|e| OidcError::Discovery(format!("invalid issuer url: {e}")))?;
 
-        let provider_metadata = CoreProviderMetadata::discover(&issuer, &http_client)
+        let provider_metadata = CoreProviderMetadata::discover_async(issuer, &http_client)
+            .await
             .map_err(|e| OidcError::Discovery(format!("failed to discover provider: {e}")))?;
 
         let client_id = ClientId::new(config.client_id);
@@ -57,8 +57,9 @@ impl GoogleOidcFlow {
     }
 }
 
+#[async_trait::async_trait]
 impl OidcFlow for GoogleOidcFlow {
-    fn start(&self) -> Result<OidcAuthStart, OidcError> {
+    async fn start(&self) -> Result<OidcAuthStart, OidcError> {
         let client = CoreClient::from_provider_metadata(
             self.provider_metadata.clone(),
             self.client_id.clone(),
@@ -87,7 +88,7 @@ impl OidcFlow for GoogleOidcFlow {
         })
     }
 
-    fn exchange(
+    async fn exchange(
         &self,
         code: &str,
         expected_nonce: &str,
@@ -105,7 +106,8 @@ impl OidcFlow for GoogleOidcFlow {
             .map_err(|e| OidcError::Flow(format!("failed to prepare token exchange: {e}")))?;
         let token_response = token_request
             .set_pkce_verifier(PkceCodeVerifier::new(pkce_verifier.to_string()))
-            .request(&self.http_client)
+            .request_async(&self.http_client)
+            .await
             .map_err(|e| OidcError::Flow(format!("failed to exchange authorization code: {e}")))?;
 
         let id_token = token_response

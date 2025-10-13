@@ -25,10 +25,11 @@ pub enum OidcError {
     Flow(String),
 }
 
+#[async_trait::async_trait]
 #[allow(dead_code)]
 pub trait OidcFlow: Send + Sync {
-    fn start(&self) -> Result<OidcAuthStart, OidcError>;
-    fn exchange(
+    async fn start(&self) -> Result<OidcAuthStart, OidcError>;
+    async fn exchange(
         &self,
         code: &str,
         expected_nonce: &str,
