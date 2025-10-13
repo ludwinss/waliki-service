@@ -2,7 +2,7 @@
 # see https://diesel.rs/guides/configuring-diesel-cli
 
 [print_schema]
-file = "src/context/user/infraestructure/postgres/schema.rs"
+file = "src/context/user/infrastructure/postgres/schema.rs"
 schema = "user"
 custom_type_derives = ["diesel::query_builder::QueryId", "Clone"]
 
