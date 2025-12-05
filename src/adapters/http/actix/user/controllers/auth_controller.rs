@@ -2,13 +2,26 @@ use std::sync::Arc;
 
 use actix_session::Session;
 use actix_web::http::header::LOCATION;
-use actix_web::{HttpResponse, Responder, get, web};
-use serde::Deserialize;
+use actix_web::{HttpResponse, Responder, get, post, web};
+use serde::{Deserialize, Serialize};
 
-use crate::adapters::http::actix::{error_mapper::to_http_error, user::mapper};
+use crate::adapters::http::actix::{
+    error_mapper::to_http_error,
+    guards::{access_token::AccessTokenGuard, refresh_token::RefreshTokenGuard},
+    user::{dto::login_with_google_out::LoginWithGoogleOut, mapper},
+};
+use crate::context::shared_kernel::{
+    application::{
+        ports::token_issuer::Claims,
+        services::session_tokens::{SessionTokenError, SessionTokenIssuer},
+    },
+    value_objects::uuid::Uuid,
+};
 use crate::context::user::application::{
     ports::oidc_flow::OidcFlow,
-    usecases::login_with_google::{LoginWithGoogleUseCase, request::LoginWithGoogleRequest},
+    usecases::login_with_google::{
+        LoginWithGoogleUseCase, request::LoginWithGoogleRequest, response::LoginWithGoogleResponse,
+    },
 };
 
 const SESSION_CSRF_KEY: &str = "oidc::csrf";
@@ -95,6 +108,7 @@ pub async fn google_callback(
     session: Session,
     flow: web::Data<Arc<dyn OidcFlow>>,
     handler: web::Data<Arc<dyn LoginWithGoogleUseCase>>,
+    session_tokens: web::Data<Arc<dyn SessionTokenIssuer>>,
     query: web::Query<GoogleCallbackQuery>,
 ) -> impl Responder {
     let query = query.into_inner();
@@ -176,13 +190,106 @@ pub async fn google_callback(
     };
 
     let handler_clone = handler.get_ref().clone();
+    let session_tokens = session_tokens.get_ref().clone();
 
     match web::block(move || handler_clone.execute(req)).await {
-        Ok(Ok(resp)) => HttpResponse::Ok().json(mapper::to_out(resp)),
+        Ok(Ok(resp)) => match issue_login_tokens(resp, session_tokens.as_ref()) {
+            Ok(body) => HttpResponse::Ok().json(body),
+            Err(resp) => resp,
+        },
         Ok(Err(e)) => to_http_error(e),
         Err(e) => {
             tracing::error!(target = "waliki_service", error = %e, "blocking task error");
             HttpResponse::InternalServerError().finish()
         }
     }
+}
+
+#[post("/auth/refresh")]
+pub async fn refresh_tokens(
+    guard: RefreshTokenGuard,
+    session_tokens: web::Data<Arc<dyn SessionTokenIssuer>>,
+) -> impl Responder {
+    let subject = guard.claims().subject().to_string();
+    let user_uuid = match Uuid::parse_str(&subject) {
+        Ok(uuid) => uuid,
+        Err(_) => {
+            tracing::warn!(
+                target = "waliki_service",
+                subject = %subject,
+                "refresh token subject is not a valid UUID"
+            );
+            return HttpResponse::BadRequest().body("invalid token subject");
+        }
+    };
+    let response = LoginWithGoogleResponse { user_uuid };
+    match issue_login_tokens(response, session_tokens.get_ref().as_ref()) {
+        Ok(body) => HttpResponse::Ok().json(body),
+        Err(err) => err,
+    }
+}
+
+#[get("/auth/me")]
+pub async fn current_session(guard: AccessTokenGuard) -> impl Responder {
+    HttpResponse::Ok().json(ClaimsOut::from(guard.claims()))
+}
+
+#[derive(Serialize)]
+struct ClaimsOut {
+    iss: String,
+    sub: String,
+    aud: String,
+    exp: u64,
+    nbf: u64,
+    iat: u64,
+}
+
+impl From<&Claims> for ClaimsOut {
+    fn from(claims: &Claims) -> Self {
+        Self {
+            iss: claims.issuer().to_string(),
+            sub: claims.subject().to_string(),
+            aud: claims.audience().to_string(),
+            exp: claims.expiration().as_secs(),
+            nbf: claims.not_before().as_secs(),
+            iat: claims.issued_at().as_secs(),
+        }
+    }
+}
+
+fn issue_login_tokens(
+    resp: LoginWithGoogleResponse,
+    issuer: &dyn SessionTokenIssuer,
+) -> Result<LoginWithGoogleOut, HttpResponse> {
+    let tokens = issuer
+        .issue_for(&resp.user_uuid)
+        .map_err(map_session_token_error)?;
+    Ok(mapper::to_out(resp, &tokens.access, &tokens.refresh))
+}
+
+fn map_session_token_error(err: SessionTokenError) -> HttpResponse {
+    match &err {
+        SessionTokenError::Clock(e) => {
+            tracing::error!(
+                target = "waliki_service",
+                error = ?e,
+                "system clock is behind UNIX_EPOCH"
+            );
+        }
+        SessionTokenError::EncodeAccess(e) => {
+            tracing::error!(
+                target = "waliki_service",
+                error = %e,
+                "failed to encode access token"
+            );
+        }
+        SessionTokenError::EncodeRefresh(e) => {
+            tracing::error!(
+                target = "waliki_service",
+                error = %e,
+                "failed to encode refresh token"
+            );
+        }
+    }
+    HttpResponse::InternalServerError().finish()
 }

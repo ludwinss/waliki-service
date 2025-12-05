@@ -1,4 +1,5 @@
 pub mod error_mapper;
+pub mod guards;
 pub mod routes;
 pub mod state;
 pub mod user;
@@ -33,9 +34,13 @@ pub async fn main() -> std::io::Result<()> {
     let AppState {
         login_with_google,
         oidc_flow,
+        session_tokens,
+        token_verifier,
     } = state;
     let login_with_google = web::Data::new(login_with_google);
     let oidc_flow = web::Data::new(oidc_flow);
+    let session_tokens = web::Data::new(session_tokens);
+    let token_verifier = web::Data::new(token_verifier);
 
     let secret_bytes = parse_secret_key(&cfg.common.secret_key);
     let secret_key = Key::from(&secret_bytes);
@@ -47,6 +52,8 @@ pub async fn main() -> std::io::Result<()> {
             .wrap(Logger::new("%a \"%r\" %s %b %T"))
             .app_data(login_with_google.clone())
             .app_data(oidc_flow.clone())
+            .app_data(session_tokens.clone())
+            .app_data(token_verifier.clone())
             .wrap(
                 SessionMiddleware::builder(CookieSessionStore::default(), secret_key.clone())
                     .cookie_secure(cfg.cookie_secure)

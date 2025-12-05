@@ -1,7 +1,16 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
-use crate::context::shared_kernel::infrastructure::adapters::{
-    system_clock::SystemClock, uuid_v7_generator::UuidV7Generator,
+use jsonwebtoken::Algorithm;
+
+use crate::context::shared_kernel::{
+    application::{
+        ports::{token_issuer::TokenIssuer, token_verifier::TokenVerifier},
+        services::session_tokens::{JwtClaimsContext, JwtSessionTokenIssuer, SessionTokenIssuer},
+    },
+    infrastructure::{
+        adapters::{system_clock::SystemClock, uuid_v7_generator::UuidV7Generator},
+        jwt::token_codec::{JwtCfg, JwtTokenCodec},
+    },
 };
 use crate::context::user::{
     application::ports::oidc_flow::OidcFlow,
@@ -16,12 +25,14 @@ use crate::context::user::{
         },
     },
 };
-use crate::platform::config::api::ApiConfig;
+use crate::platform::config::{api::ApiConfig, helpers::parse_secret_key};
 use anyhow::Context;
 
 pub struct AppState {
     pub login_with_google: Arc<dyn LoginWithGoogleUseCase>,
     pub oidc_flow: Arc<dyn OidcFlow>,
+    pub session_tokens: Arc<dyn SessionTokenIssuer>,
+    pub token_verifier: Arc<dyn TokenVerifier>,
 }
 
 impl AppState {
@@ -46,9 +57,30 @@ impl AppState {
             .map_err(anyhow::Error::from)?;
         let oidc_flow: Arc<dyn OidcFlow> = Arc::new(oidc_flow);
 
+        let jwt_secret = parse_secret_key(&cfg.common.secret_key);
+        let jwt_cfg = JwtCfg::new(
+            Algorithm::HS256,
+            cfg.common.jwt_issuer.clone(),
+            cfg.common.jwt_audience.clone(),
+            Duration::from_secs(cfg.common.jwt_access_ttl_secs),
+            Duration::from_secs(cfg.common.jwt_refresh_ttl_secs),
+        );
+        let token_codec = Arc::new(JwtTokenCodec::hs256(&jwt_secret, jwt_cfg));
+        let token_issuer: Arc<dyn TokenIssuer> = token_codec.clone();
+        let token_verifier: Arc<dyn TokenVerifier> = token_codec.clone();
+
+        let jwt_claims = JwtClaimsContext {
+            issuer: cfg.common.jwt_issuer.clone(),
+            audience: cfg.common.jwt_audience.clone(),
+        };
+        let session_tokens: Arc<dyn SessionTokenIssuer> =
+            Arc::new(JwtSessionTokenIssuer::new(token_issuer.clone(), jwt_claims));
+
         Ok(Self {
             login_with_google,
             oidc_flow,
+            session_tokens,
+            token_verifier,
         })
     }
 }
