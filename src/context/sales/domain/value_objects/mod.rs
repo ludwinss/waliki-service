@@ -1,0 +1,10 @@
+pub mod date_sale;
+pub mod line_total;
+pub mod money;
+pub mod payment_method;
+pub mod product_id;
+pub mod quantity;
+pub mod sale_id;
+pub mod seller_id;
+pub mod store_id;
+pub mod unit_price;

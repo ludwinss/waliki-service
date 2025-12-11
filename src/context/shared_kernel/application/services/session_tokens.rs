@@ -7,7 +7,7 @@ use anyhow::Error;
 
 use crate::context::shared_kernel::{
     application::ports::token_issuer::{AccessToken, Claims, RefreshToken, TokenIssuer},
-    value_objects::uuid::Uuid,
+    domain::value_objects::uuid::Uuid,
 };
 
 #[derive(Clone)]

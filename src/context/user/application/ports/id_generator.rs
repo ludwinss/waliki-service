@@ -1,4 +1,4 @@
-use crate::context::shared_kernel::value_objects::uuid::Uuid;
+use crate::context::shared_kernel::domain::value_objects::uuid::Uuid;
 
 pub trait IdGenerator: Send + Sync {
     fn new_uuid(&self) -> Uuid;

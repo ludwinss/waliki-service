@@ -1,5 +1,6 @@
 use crate::context::{
-    shared_kernel::value_objects::uuid::Uuid, user::application::ports::id_generator::IdGenerator,
+    shared_kernel::domain::value_objects::uuid::Uuid,
+    user::application::ports::id_generator::IdGenerator,
 };
 
 pub struct UuidV7Generator;

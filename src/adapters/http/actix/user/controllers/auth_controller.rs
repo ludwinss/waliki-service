@@ -15,7 +15,7 @@ use crate::context::shared_kernel::{
         ports::token_issuer::Claims,
         services::session_tokens::{SessionTokenError, SessionTokenIssuer},
     },
-    value_objects::uuid::Uuid,
+    domain::value_objects::uuid::Uuid,
 };
 use crate::context::user::application::{
     ports::oidc_flow::OidcFlow,

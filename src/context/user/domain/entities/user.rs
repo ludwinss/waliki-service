@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
 
-use crate::context::shared_kernel::value_objects::uuid::Uuid;
+use crate::context::shared_kernel::domain::value_objects::uuid::Uuid;
 use crate::context::user::domain::value_objects::{
     email::Email, external_provider::ExternalProvider, external_subject::ExternalSubject,
     fullname::Fullname,
