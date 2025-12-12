@@ -30,17 +30,19 @@ impl Date {
     }
 
     fn ensure_is_string_iso_utc(raw: &str) -> Result<(), DomainError> {
-        let end_with_utc = raw.ends_with("Z");
-        let is_iso = NaiveDate::parse_from_str(raw, "%Y-%m-%d").is_ok();
-
-        if (!end_with_utc || !is_iso) {
-            return Err(DomainError::with_ctx(
-                DATE_FORMAT_ISO,
-                vec![("raw", raw.to_string())],
-            ));
+        if !raw.ends_with("Z") {
+            return Err(DomainError::with_ctx(DATE_FORMAT_ISO, vec![]));
         }
 
-        Ok(())
+        match DateTime::parse_from_rfc3339(raw) {
+            Ok(datetime) => {
+                if datetime.offset().local_minus_utc() != 0 {
+                    return Err(DomainError::new(DATE_FORMAT_ISO));
+                }
+                Ok(())
+            }
+            Err(_) => Err(DomainError::with_ctx(DATE_FORMAT_ISO, vec![])),
+        }
     }
 }
 
@@ -49,7 +51,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn as_date_must_be_without_time() {
+    fn must_instance_naive_date_without_time() {
         let dt = Utc::now();
         let date = Date(dt);
 
@@ -59,7 +61,7 @@ mod tests {
     }
 
     #[test]
-    fn must_be_x_days() {
+    fn must_add_days_in_date() {
         let mut date = Date::now();
         const DAYS: i64 = 3;
         date.add_days(DAYS);
@@ -67,5 +69,12 @@ mod tests {
             date.as_date(),
             Utc::now().date_naive() + Duration::days(DAYS)
         );
+    }
+
+    #[test]
+    fn must_create_date_from_iso_string() {
+        let date = Date::from_iso_string("2022-01-01T00:00:00Z").unwrap();
+
+        assert_eq!(date.as_date(), NaiveDate::from_ymd_opt(2022, 1, 1).unwrap());
     }
 }

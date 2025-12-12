@@ -1,4 +1,4 @@
 pub enum PaymentMethod {
     QR,
-    EFECTIVO,
+    Efectivo,
 }
