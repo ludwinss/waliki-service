@@ -5,7 +5,7 @@ use crate::context::sales::domain::{
     },
 };
 
-pub struct Sales {
+pub struct Sale {
     id: SaleID,
     store_id: StoreID,
     perfomed_by: SellerID,
