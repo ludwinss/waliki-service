@@ -4,7 +4,7 @@ use crate::context::{
 };
 
 #[derive(PartialEq, Debug)]
-struct DateSale {
+pub struct DateSale {
     value: Date,
 }
 

@@ -5,5 +5,6 @@ pub mod payment_method;
 pub mod product_id;
 pub mod quantity;
 pub mod sale_id;
+pub mod sale_item_id;
 pub mod seller_id;
 pub mod store_id;
