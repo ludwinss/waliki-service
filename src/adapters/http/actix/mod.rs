@@ -27,7 +27,7 @@ pub async fn main() -> std::io::Result<()> {
             .await
             .map_err(|e| {
                 eprintln!("spawn_blocking(AppState::from_cfg) panicked: {e}");
-                std::io::Error::new(std::io::ErrorKind::Other, "OIDC init task panicked")
+                std::io::Error::other("OIDC init task panicked")
             })?
     };
     let state = web::Data::new(state);

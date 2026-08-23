@@ -37,10 +37,10 @@ impl LoginWithGoogleHandler {
                 user.mark_email_verified_now();
             }
 
-            if let Some(new_name) = fullname {
-                if user.fullname() != Some(&new_name) {
-                    user.rename(new_name);
-                }
+            if let Some(new_name) = fullname
+                && user.fullname() != Some(&new_name)
+            {
+                user.rename(new_name);
             }
 
             user.link_or_update_identites(ExternalProvider::Google, sub_parsed);
