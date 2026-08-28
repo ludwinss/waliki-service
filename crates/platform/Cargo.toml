@@ -1,0 +1,10 @@
+[package]
+name = "platform"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+dotenvy = "0.15.7"
+
+[lints]
+workspace = true
