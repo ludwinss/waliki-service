@@ -59,8 +59,6 @@ tracing-log = "0.2.0"
 tracing-actix-web = "0.7.19"
 
 [dev-dependencies]
-cargo-husky = { version = "1.5.0", features = [
-  "precommit-hook",
-  "run-cargo-test",
-  "run-cargo-clippy",
+cargo-husky = { version = "1.5.0", default-features = false, features = [
+  "user-hooks",
 ] }
