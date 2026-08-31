@@ -3,8 +3,9 @@ use regex::Regex;
 use std::fmt;
 use tracing::{debug, warn};
 
-use crate::context::shared::errors::domain_error::DomainError;
-use crate::context::user::domain::errors::value_objects as Errors;
+use crate::context::{
+    shared_kernel::errors::domain_error::DomainError, user::domain::errors::value_objects as Errors,
+};
 
 static EMAIL_REGEX: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?i)^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$")

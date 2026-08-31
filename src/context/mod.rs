@@ -1,2 +1,2 @@
-pub mod shared;
+pub mod shared_kernel;
 pub mod user;

@@ -1,5 +1,5 @@
 use crate::context::{
-    shared::errors::domain_error::DomainError,
+    shared_kernel::errors::domain_error::DomainError,
     user::domain::errors::value_objects::{
         EMPTY_EXTERNAL_SUBJECT, INVALID_EXTERNAL_SUBJECT, INVALID_EXTERNAL_SUBJECT_LENGTH,
     },

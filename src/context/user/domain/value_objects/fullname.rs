@@ -1,5 +1,5 @@
 use crate::context::{
-    shared::errors::domain_error::DomainError, user::domain::errors::value_objects as Error,
+    shared_kernel::errors::domain_error::DomainError, user::domain::errors::value_objects as Error,
 };
 
 #[derive(PartialEq, Eq, Clone)]
