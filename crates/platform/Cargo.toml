@@ -5,6 +5,8 @@ edition.workspace = true
 
 [dependencies]
 dotenvy = "0.15.7"
+diesel.workspace = true
+diesel-async.workspace = true
 
 [lints]
 workspace = true

@@ -2,28 +2,40 @@ use dotenvy::dotenv;
 use std::{env, str::FromStr};
 
 pub struct Config {
-    port: u16,
-    subdomain: String,
+    server_port: u16,
+    path_subdomain: String,
+    database_url: String,
+    database_pool: u32,
 }
 
 impl Config {
     pub fn from_env() -> Self {
         dotenv().ok();
         Self {
-            port: Self::get_required("PORT"),
-            subdomain: format!(
+            server_port: Self::get_required("SERVER_PORT"),
+            path_subdomain: format!(
                 "/{}",
-                Self::get("SUBDOMAIN").unwrap_or_else(|| "api".to_owned())
+                Self::get("PATH_SUBDOMAIN").unwrap_or_else(|| "api".to_owned())
             ),
+            database_url: Self::get_required("DATABASE_URL"),
+            database_pool: Self::get_required("DATABASE_POOL"),
         }
     }
 
     pub fn port(&self) -> u16 {
-        self.port
+        self.server_port
     }
 
-    pub fn subdomain(&self) -> &String {
-        &self.subdomain
+    pub fn subdomain(&self) -> &str {
+        &self.path_subdomain
+    }
+
+    pub fn database_pool(&self) -> u32 {
+        self.database_pool
+    }
+
+    pub fn database_url(&self) -> &str {
+        &self.database_url
     }
 
     fn get_required<T>(name: &str) -> T
