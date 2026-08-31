@@ -47,6 +47,7 @@ diesel = { version = "2.2.12", features = [
   "r2d2",
   "uuid",
   "chrono",
+  "serde_json",
 ] }
 dotenv = "0.15.0"
 regex = "1.11.2"

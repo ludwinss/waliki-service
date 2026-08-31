@@ -56,10 +56,10 @@ where
             if user.email_verified_at().is_none() && req.email_verified {
                 user.mark_email_verified_at(self.clock.now());
             }
-            if let Some(new_name) = fullname {
-                if user.fullname() != Some(&new_name) {
-                    user.rename(new_name);
-                }
+            if let Some(new_name) = fullname
+                && user.fullname() != Some(&new_name)
+            {
+                user.rename(new_name);
             }
             user.link_or_update_identities(ExternalProvider::Google, sub);
             self.repo.save(&user)?;

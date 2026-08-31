@@ -27,11 +27,11 @@ pub async fn main() -> std::io::Result<()> {
             .await
             .map_err(|e| {
                 eprintln!("spawn_blocking(AppState::from_cfg) panicked: {e}");
-                std::io::Error::new(std::io::ErrorKind::Other, "app state init task panicked")
+                std::io::Error::other("app state init task panicked")
             })?
             .map_err(|e| {
                 eprintln!("failed to initialize app state: {e:?}");
-                std::io::Error::new(std::io::ErrorKind::Other, "failed to initialize app state")
+                std::io::Error::other("failed to initialize app state")
             })?
     };
     let AppState {

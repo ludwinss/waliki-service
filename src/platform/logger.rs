@@ -28,6 +28,7 @@ impl Default for LogOptions {
     }
 }
 
+#[allow(dead_code)]
 pub struct Redact<T>(pub T);
 impl<T: fmt::Display> fmt::Display for Redact<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
