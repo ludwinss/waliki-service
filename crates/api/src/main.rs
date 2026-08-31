@@ -1,12 +1,18 @@
-use axum::{Router, routing::get};
+use axum::{Router, routing::get, serve};
+use platform::Config;
 
 mod health;
 
-fn main() -> anyhow::Result<()> {
-    println!("Hello, world!");
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let config = Config::from_env();
+
     let app: Router<()> = Router::new().route("/health", get(health::handler_with_db));
 
-    // let listener = tokio::net::TcpListener::
-    // axum::serve
+    let address = format!("0.0.0.0:{}", config.port());
+    let listener = tokio::net::TcpListener::bind(&address).await?;
+
+    serve(listener, Router::new().nest(config.subdomain(), app)).await?;
+
     Ok(())
 }
