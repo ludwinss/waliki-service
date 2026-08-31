@@ -282,6 +282,7 @@ pub mod waliki {
             block_sale_without_stock -> Bool,
             created_at -> Timestamptz,
             updated_at -> Timestamptz,
+            variant_presets -> Jsonb,
         }
     }
 

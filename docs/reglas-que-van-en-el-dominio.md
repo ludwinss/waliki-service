@@ -18,6 +18,7 @@ Lo que antes hacía Postgres y ahora hay que implementar y testear acá:
 | 8 | Historial de precios | trigger `log_variant_price_change` | el caso de uso que cambia `suggested_price` inserta en `variant_price_changes` en la **misma transacción** |
 | 9 | Detección de deriva del stock | vista `stock_check` | consulta del servicio, expuesta como health check |
 | 10 | `default_variant_kind` ∈ `enabled_variant_kinds` | — (nunca existió) | invariante del agregado `Venture` |
+| 11 | Forma de `variant_presets`: claves son kinds conocidos, valores son arrays no vacíos de strings no vacíos | función `variant_presets_valid` + CHECK (Supabase, `20260829_venture_variant_presets.sql`) | invariante del agregado `Venture`; la base solo garantiza `jsonb_typeof(variant_presets) = 'object'` |
 
 ## Detalle de las dos que tienen trampa
 
@@ -91,3 +92,14 @@ varchar.
 Los conjuntos cerrados son `varchar` + CHECK, no enums de Postgres
 (decisión 18): la verdad vive en el enum de Rust y Diesel los lee como `String`
 con un `TryFrom` en el dominio.
+
+### 11. `variant_presets` sin función de validación
+
+Supabase resuelve la forma de `variant_presets` con una función SQL marcada
+`immutable` porque un CHECK no admite subconsultas y validar un jsonb necesita
+recorrerlo con `jsonb_each`. Acá esa función no puede existir (decisión 20:
+cero funciones en la base), así que el CHECK se queda corto a propósito —
+solo `jsonb_typeof(variant_presets) = 'object'` — y el agregado `Venture`
+hace el resto al construir o actualizar los presets: que cada clave sea un
+`VariantKind` conocido y cada valor un `Vec<String>` no vacío de strings no
+vacíos.
