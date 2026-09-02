@@ -5,7 +5,14 @@ edition = "2024"
 
 [workspace]
 resolver = "3"
-members = ["crates/api", "crates/platform"]
+members = [
+  "crates/api",
+  "crates/context/shared",
+  "crates/context/catalog",
+  "crates/context/identity",
+  "crates/context/operations",
+  "crates/platform",
+]
 
 [workspace.package]
 version = "0.1.0"
