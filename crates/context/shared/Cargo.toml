@@ -4,6 +4,9 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+uuid.workspace = true
+anyhow.workspace = true
+rust_decimal = "1.43.0"
 
 [lints]
 workspace = true
